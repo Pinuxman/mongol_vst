@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, os: windows-latest }
+          - { name: macOS,   os: macos-latest }
+          - { name: Linux,   os: ubuntu-22.04 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxext-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev
+
+      - name: Configure
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then GEN="-G Ninja"; fi
+          cmake -B build $GEN -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+
+      - name: Collect plugins
+        shell: bash
+        run: |
+          mkdir -p dist
+          for t in Tengri TengriFX; do
+            cp -R build/${t}_artefacts/Release/VST3/*.vst3 dist/
+            if [ -d build/${t}_artefacts/Release/AU ]; then cp -R build/${t}_artefacts/Release/AU/*.component dist/; fi
+            mkdir -p dist/Standalone
+            cp -R build/${t}_artefacts/Release/Standalone/* dist/Standalone/
+          done
+          cp README.md dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TENGRI-${{ matrix.name }}
+          path: dist
