@@ -18,6 +18,7 @@ public:
         float timbre   = 0.0f; // 0 throat .. 1 horse-head fiddle
         float sub      = 0.4f; // kargyraa sub-octave growl
         float overtone = 0.6f; // sygyt whistle amount
+        float whistle  = 1.0f; // extra gain on the whistle alone
         float harmonic = -1.0f; // fixed harmonic number, or < 0 for a wandering melody
         float vowel    = 0.25f;
     };
@@ -104,7 +105,7 @@ public:
         const float whistle = std::sin (kTwoPi * whistlePhase);
 
         const float throat = vowelOut * (1.1f - 0.5f * p.overtone)
-                           + (ot + 0.12f * whistle) * p.overtone;
+                           + (ot + 0.12f * whistle) * p.overtone * p.whistle;
 
         // --- morin khuur path --------------------------------------------------
         const float bowSaw = saw * (0.9f + 0.25f * breath) + 0.05f * breath;

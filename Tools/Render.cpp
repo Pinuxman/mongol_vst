@@ -259,9 +259,40 @@ int main (int argc, char** argv)
         print ("SYNTH throat chord vel 127", run (p, {}, 4.0, outDir.getChildFile ("08_synth_chord.wav"), midiFn));
     }
 
+    // WHISTLE: energy around the sung harmonic (H10 of 130 Hz = 1300 Hz) must follow the knob
+    for (float w : { 0.0f, 1.0f, 2.0f })
+    {
+        TengriProcessor p;
+        setParam (p, pid::harmonic, 10.0f);
+        setParam (p, pid::sweep, 0.0f);
+        setParam (p, pid::whistle, w);
+        setParam (p, pid::space, 0.0f);
+        setParam (p, pid::echo, 0.0f);
+        const auto name = "whistle_" + juce::String (juce::roundToInt (w * 100)) + ".wav";
+        print (("VOICE whistle " + juce::String (juce::roundToInt (w * 100)) + "%").toRawUTF8(), run (p, voice, 3.0, outDir.getChildFile (name)));
+    }
+    {
+        TengriProcessor p;
+        setParam (p, pid::mute, 1.0f);
+        setParam (p, pid::drum, 1.0f);
+        print ("MUTE on (voice + drum)", run (p, voice, 3.0, outDir.getChildFile ("mute.wav")));
+    }
+    {
+        TengriProcessor p;
+        for (int i = 0; i < p.getNumPrograms(); ++i)
+        {
+            p.setCurrentProgram (i);
+            const auto st = run (p, i % 2 == 0 ? voice : guitar, 2.0, outDir.getChildFile ("preset.wav"));
+            std::printf ("preset %02d %-16s peak %6.3f  rms %6.4f  %s\n", i + 1, p.getProgramName (i).toRawUTF8(),
+                         st.peak, st.rms, st.finite ? "ok" : "NaN!");
+        }
+        outDir.getChildFile ("preset.wav").deleteFile();
+    }
+
     // UI
     {
         TengriProcessor p;
+        p.setCurrentProgram (1);
         setParam (p, pid::drum, 0.5f);
         run (p, voice, 2.4, outDir.getChildFile ("ui_feed.wav"));
         snapshot (p, 0, outDir.getChildFile ("ui_voice.png"));

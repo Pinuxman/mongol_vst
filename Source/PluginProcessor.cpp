@@ -31,7 +31,8 @@ TengriProcessor::TengriProcessor()
             get (pid::kargyraa), get (pid::overtone), get (pid::harmonic), get (pid::sweep), get (pid::vowel), get (pid::throat),
             get (pid::body), get (pid::sympathy), get (pid::bow), get (pid::sustain), get (pid::grit), get (pid::snap),
             get (pid::drum), get (pid::pulse), get (pid::sync), get (pid::space), get (pid::echo),
-            get (pid::synthLevel), get (pid::synthTimbre), get (pid::synthSub), get (pid::synthOvertone), get (pid::synthAttack), get (pid::synthRelease) };
+            get (pid::synthLevel), get (pid::synthTimbre), get (pid::synthSub), get (pid::synthOvertone), get (pid::synthAttack), get (pid::synthRelease),
+            get (pid::mute), get (pid::whistle) };
 
     for (uint32_t i = 0; i < 8; ++i)
         synth.addVoice (new TengriVoice (synthShared, 1000u + i * 77u));
@@ -79,6 +80,7 @@ void TengriProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     };
     initSmooth (mixSmooth, raw.mix->load(), 0.05);
     initSmooth (gainSmooth, juce::Decibels::decibelsToGain (raw.output->load()), 0.05);
+    initSmooth (muteSmooth, raw.mute->load() > 0.5f ? 0.0f : 1.0f, 0.02);
     initSmooth (modeSmooth, raw.mode->load() > 0.5f ? 1.0f : 0.0f, 0.04);
     initSmooth (droneSmooth, raw.drone->load(), 0.3);
     initSmooth (drumSmooth, raw.drum->load(), 0.05);
@@ -126,6 +128,7 @@ void TengriProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     tengri::VoiceTransformer::Params vp;
     vp.kargyraa = raw.kargyraa->load();
     vp.overtone = raw.overtone->load();
+    vp.whistle  = raw.whistle->load();
     vp.harmonic = raw.harmonic->load();
     vp.sweep    = raw.sweep->load();
     vp.vowel    = raw.vowel->load();
@@ -142,6 +145,7 @@ void TengriProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
     mixSmooth.setTargetValue (raw.mix->load());
     gainSmooth.setTargetValue (juce::Decibels::decibelsToGain (raw.output->load()));
+    muteSmooth.setTargetValue (raw.mute->load() > 0.5f ? 0.0f : 1.0f);
     modeSmooth.setTargetValue (raw.mode->load() > 0.5f ? 1.0f : 0.0f);
     droneSmooth.setTargetValue (raw.drone->load());
     synthLevelSmooth.setTargetValue (raw.synthLevel->load());
@@ -171,6 +175,7 @@ void TengriProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     droneParams.sub      = 0.3f;
     droneParams.overtone = 0.55f;
     droneParams.vowel    = vp.vowel;
+    droneParams.whistle  = vp.whistle;
     droneCore.setFrequency (tengri::midiToHz ((float) (36 + rootPc)), false);
 
     const float echoAmount = raw.echo->load();
@@ -251,7 +256,7 @@ void TengriProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     int w = scopeWrite.load (std::memory_order_relaxed);
     for (int i = 0; i < n; ++i)
     {
-        const float g = gainSmooth.getNextValue();
+        const float g = gainSmooth.getNextValue() * muteSmooth.getNextValue();
         float l = safetyClip ((outL[i] + wetL[i]) * g);
         float r = safetyClip (((outR != nullptr ? outR[i] : outL[i]) + wetR[i]) * g);
 
@@ -292,6 +297,26 @@ void TengriProcessor::readScope (float* dest, int num) const noexcept
         dest[i] = scope[(size_t) r];
         r = (r + 1) & (scopeSize - 1);
     }
+}
+
+int TengriProcessor::getCurrentProgram()
+{
+    return juce::jlimit (0, getNumPrograms() - 1, (int) apvts.state.getProperty ("preset", 0));
+}
+
+void TengriProcessor::setCurrentProgram (int index)
+{
+    const auto& presets = tengri::factoryPresets();
+    if (! juce::isPositiveAndBelow (index, (int) presets.size()))
+        return;
+    apvts.state.setProperty ("preset", index, nullptr);
+    tengri::applyPreset (apvts, presets[(size_t) index]);
+}
+
+const juce::String TengriProcessor::getProgramName (int index)
+{
+    const auto& presets = tengri::factoryPresets();
+    return juce::isPositiveAndBelow (index, (int) presets.size()) ? juce::String (presets[(size_t) index].name) : juce::String();
 }
 
 juce::AudioProcessorEditor* TengriProcessor::createEditor()

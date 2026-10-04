@@ -150,6 +150,75 @@ private:
 };
 
 //==============================================================================
+/** Preset browser pill:  <  03  SYGYT FLUTE  >   — click the name for the full list. */
+class PresetBar : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    std::function<int()> getIndex;
+    std::function<void (int)> setIndex;
+    juce::StringArray names;
+
+    PresetBar() { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+
+    void refresh()
+    {
+        const int i = getIndex ? getIndex() : 0;
+        if (i != shown) { shown = i; repaint(); }
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        const auto r = getLocalBounds().toFloat().reduced (1.0f);
+        const float radius = r.getHeight() * 0.5f;
+        g.setColour (palette::card);
+        g.fillRoundedRectangle (r, radius);
+        g.setColour (palette::stroke);
+        g.drawRoundedRectangle (r, radius, 1.0f);
+
+        const float arrowW = r.getHeight() + 6.0f;
+        DotMatrix::drawCentred (g, "<", r.withWidth (arrowW), 2.0f, palette::cream);
+        DotMatrix::drawCentred (g, ">", r.withLeft (r.getRight() - arrowW), 2.0f, palette::cream);
+
+        auto mid = r.reduced (arrowW, 0.0f);
+        const int idx = juce::jlimit (0, std::max (0, names.size() - 1), shown);
+        const auto num = juce::String (idx + 1).paddedLeft ('0', 2);
+        g.setColour (palette::brick);
+        g.fillEllipse (mid.getX() + 4.0f, mid.getCentreY() - 3.0f, 6.0f, 6.0f);
+        DotMatrix::draw (g, num, mid.getX() + 18.0f, mid.getCentreY() - DotMatrix::height (2.0f) * 0.5f, 2.0f, palette::dim);
+        if (names.size() > 0)
+            DotMatrix::draw (g, names[idx], mid.getX() + 18.0f + DotMatrix::width (num, 2.0f) + 16.0f,
+                             mid.getCentreY() - DotMatrix::height (2.0f) * 0.5f, 2.0f, palette::cream);
+    }
+
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        if (names.isEmpty() || ! setIndex)
+            return;
+        const float arrowW = (float) getHeight() + 6.0f;
+        const int n = names.size();
+        if (e.position.x < arrowW)                     { setIndex ((shown - 1 + n) % n); }
+        else if (e.position.x > (float) getWidth() - arrowW) { setIndex ((shown + 1) % n); }
+        else
+        {
+            juce::PopupMenu menu;
+            for (int i = 0; i < n; ++i)
+                menu.addItem (i + 1, juce::String (i + 1).paddedLeft ('0', 2) + "   " + names[i], true, i == shown);
+            menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMinimumWidth (getWidth()),
+                                [safe = juce::Component::SafePointer<PresetBar> (this)] (int result)
+                                {
+                                    if (safe != nullptr && result > 0 && safe->setIndex)
+                                        safe->setIndex (result - 1);
+                                });
+            return;
+        }
+        refresh();
+    }
+
+private:
+    int shown = -1;
+};
+
+//==============================================================================
 /** Dot-matrix spectrum with a highlighted column for the sung / bowed harmonic. */
 class DotSpectrum : public juce::Component
 {

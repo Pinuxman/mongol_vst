@@ -20,6 +20,7 @@ struct Analysis
     - vowel    : U-O-A-E-I formant resonator (mouth shape)
     - overtone : razor-thin band-pass riding on harmonic N of the tracked pitch
                  plus a re-synthesised whistle, like the sygyt "flute" over the drone
+    - whistle  : loudness of that whistle on its own (0..200 %)
     - sweep    : melodic movement of the whistle across harmonics 6..12
     - throat   : pressed-larynx saturation
 */
@@ -28,7 +29,7 @@ class VoiceTransformer
 public:
     struct Params
     {
-        float kargyraa = 0.5f, overtone = 0.6f, harmonic = 8.0f, sweep = 0.3f, vowel = 0.3f, throat = 0.3f;
+        float kargyraa = 0.5f, overtone = 0.6f, whistle = 1.0f, harmonic = 8.0f, sweep = 0.3f, vowel = 0.3f, throat = 0.3f;
     };
 
     void prepare (double sampleRate)
@@ -93,7 +94,7 @@ public:
         const float whistle = std::sin (kTwoPi * whistlePhase) * a.env * 1.4f * a.voicing;
 
         return 0.26f * (shaped * (1.0f - 0.5f * p.overtone)
-                        + (ot + whistle) * p.overtone * 1.2f
+                        + (ot + whistle) * p.overtone * p.whistle * 1.2f
                         + sub);
     }
 

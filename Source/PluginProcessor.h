@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Parameters.h"
+#include "Presets.h"
 #include "SynthVoice.h"
 #include "dsp/PitchTracker.h"
 #include "dsp/Spirit.h"
@@ -36,10 +37,10 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 8.0; }
 
-    int getNumPrograms() override { return 1; }
-    int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int) override {}
-    const juce::String getProgramName (int) override { return "Default"; }
+    int getNumPrograms() override { return (int) tengri::factoryPresets().size(); }
+    int getCurrentProgram() override;
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destData) override;
@@ -71,6 +72,7 @@ private:
         std::atomic<float>* body; std::atomic<float>* sympathy; std::atomic<float>* bow; std::atomic<float>* sustain; std::atomic<float>* grit; std::atomic<float>* snap;
         std::atomic<float>* drum; std::atomic<float>* pulse; std::atomic<float>* sync; std::atomic<float>* space; std::atomic<float>* echo;
         std::atomic<float>* synthLevel; std::atomic<float>* synthTimbre; std::atomic<float>* synthSub; std::atomic<float>* synthOvertone; std::atomic<float>* synthAttack; std::atomic<float>* synthRelease;
+        std::atomic<float>* mute; std::atomic<float>* whistle;
     } raw {};
 
     double sr = 44100;
@@ -90,7 +92,7 @@ private:
     juce::Synthesiser synth;
     tengri::SynthShared synthShared;
 
-    juce::SmoothedValue<float> mixSmooth, gainSmooth, modeSmooth, droneSmooth, drumSmooth, synthLevelSmooth;
+    juce::SmoothedValue<float> mixSmooth, gainSmooth, muteSmooth, modeSmooth, droneSmooth, drumSmooth, synthLevelSmooth;
 
     juce::AudioBuffer<float> synthBuffer, wetBuffer;
 

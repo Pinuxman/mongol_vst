@@ -37,6 +37,7 @@ TengriEditor::TengriEditor (TengriProcessor& p)
     // VOICE -> khöömei
     addKnob (voiceKnobs, kargyraa, "Kargyraa", u8"Каргыраа — низкий рычащий субоктавный призвук (удвоение периода)", palette::brick);
     addKnob (voiceKnobs, overtone, "Overtone", u8"Сыгыт — свистящий обертон, поющий над голосом", palette::brick);
+    addKnob (voiceKnobs, whistle, "Whistle", u8"Громкость самого свиста (обертон, например 1300 Гц) отдельно от голоса: 0–200%", palette::brick);
     addKnob (voiceKnobs, harmonic, "Harmonic", u8"Номер гармоники, на которой поёт обертон", palette::brick);
     addKnob (voiceKnobs, sweep, "Sweep", u8"Мелодия обертонов: скорость и размах движения", palette::brick);
     addKnob (voiceKnobs, vowel, "Vowel", u8"Гласная У-О-А-Э-И — форма рта", palette::brick);
@@ -67,6 +68,24 @@ TengriEditor::TengriEditor (TengriProcessor& p)
     addKnob (spiritKnobs, root, "Root", u8"Тоника: строй бурдона, симпатических струн и пентатоники", palette::brick);
 
     addAndMakeVisible (modeSwitch);
+
+    for (auto& preset : tengri::factoryPresets())
+        presetBar.names.add (preset.name);
+    presetBar.getIndex = [this] { return processor.getCurrentProgram(); };
+    presetBar.setIndex = [this] (int i)
+    {
+        processor.setCurrentProgram (i);
+        processor.updateHostDisplay (juce::AudioProcessor::ChangeDetails().withProgramChanged (true));
+        presetBar.refresh();
+    };
+    presetBar.setTooltip (ru (u8"Пресеты: стрелки — листать, клик по названию — список"));
+    presetBar.refresh();
+    addAndMakeVisible (presetBar);
+
+    muteButton.getProperties().set ("danger", true);
+    muteButton.setTooltip (ru (u8"Заглушить выход плагина"));
+    muteAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, tengri::pid::mute, muteButton);
+    addAndMakeVisible (muteButton);
     addAndMakeVisible (spectrum);
     addAndMakeVisible (mixSlider);
     addAndMakeVisible (outSlider);
@@ -107,11 +126,14 @@ void TengriEditor::resized()
 {
     modeSwitch.setBounds (530, 24, 260, 46);
 
-    leftCard   = { 24.0f, 118.0f, 468.0f, 558.0f };
-    synthCard  = { 508.0f, 118.0f, 468.0f, 274.0f };
-    spiritCard = { 508.0f, 402.0f, 468.0f, 274.0f };
+    presetBar.setBounds (24, 88, 468, 36);
+    muteButton.setBounds (876, 88, 100, 36);
 
-    spectrum.setBounds (48, 200, 424, 152);
+    leftCard   = { 24.0f, 166.0f, 468.0f, 558.0f };
+    synthCard  = { 508.0f, 166.0f, 468.0f, 274.0f };
+    spiritCard = { 508.0f, 450.0f, 468.0f, 274.0f };
+
+    spectrum.setBounds (48, 248, 424, 152);
 
     auto layoutGrid = [] (Knobs& knobs, juce::Rectangle<int> area, int rows, int cols)
     {
@@ -120,17 +142,17 @@ void TengriEditor::resized()
             knobs[i]->setBounds (area.getX() + (i % cols) * w, area.getY() + (i / cols) * h, w, h);
     };
 
-    const juce::Rectangle<int> modeKnobArea (40, 370, 440, 256);
-    layoutGrid (voiceKnobs, modeKnobArea, 2, 3);
+    const juce::Rectangle<int> modeKnobArea (40, 418, 440, 256);
+    layoutGrid (voiceKnobs, modeKnobArea, 2, 4);
     layoutGrid (stringKnobs, modeKnobArea, 2, 3);
 
-    layoutGrid (synthKnobs, { 524, 186, 436, 204 }, 2, 3);
-    layoutGrid (spiritKnobs, { 524, 470, 436, 204 }, 2, 3);
+    layoutGrid (synthKnobs, { 524, 234, 436, 204 }, 2, 3);
+    layoutGrid (spiritKnobs, { 524, 518, 436, 204 }, 2, 3);
 
-    mixSlider.setBounds (48, 638, 200, 28);
-    outSlider.setBounds (268, 638, 200, 28);
+    mixSlider.setBounds (48, 686, 200, 28);
+    outSlider.setBounds (268, 686, 200, 28);
 
-    syncButton.setBounds (876, 420, 80, 26);
+    syncButton.setBounds (876, 468, 80, 26);
 }
 
 void TengriEditor::paint (juce::Graphics& g)
@@ -138,7 +160,11 @@ void TengriEditor::paint (juce::Graphics& g)
     g.fillAll (palette::background);
 
     drawHeader (g);
-    drawOrnament (g, { 24.0f, 86.0f, 952.0f, 21.0f });
+    drawOrnament (g, { 24.0f, 134.0f, 952.0f, 21.0f });
+
+    g.setFont (labelFont (11.0f, false));
+    g.setColour (palette::dim);
+    g.drawText (ru (u8"пресеты · стрелки — листать, клик по названию — список"), 508, 88, 340, 36, juce::Justification::centredLeft);
 
     const bool voice = modeSwitch.getIndex() == 0;
     drawCard (g, leftCard, voice ? "KHOOMEI" : "MORIN KHUUR",
@@ -151,7 +177,7 @@ void TengriEditor::paint (juce::Graphics& g)
     // separator above the mix row
     g.setColour (palette::stroke);
     for (float x = 48.0f; x < 470.0f; x += 6.0f)
-        g.fillEllipse (x, 630.0f, 1.6f, 1.6f);
+        g.fillEllipse (x, 678.0f, 1.6f, 1.6f);
 
     // drum pulse — ring of dots that flashes with every hit
     const juce::Point<float> c (spiritCard.getRight() - 128.0f, spiritCard.getY() + 33.0f);
@@ -239,6 +265,7 @@ void TengriEditor::timerCallback()
 {
     if (modeSwitch.getIndex() != lastMode)
         updateModeVisibility();
+    presetBar.refresh();
 
     auto& t = processor.telemetry;
     const float f0 = t.pitchHz.load();

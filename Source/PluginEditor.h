@@ -13,7 +13,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
-    static constexpr int editorWidth = 1000, editorHeight = 700;
+    static constexpr int editorWidth = 1000, editorHeight = 748;
 
 private:
     void timerCallback() override;
@@ -32,6 +32,9 @@ private:
     juce::TooltipWindow tooltips { this, 700 };
 
     tengri::ui::ModeSwitch modeSwitch;
+    tengri::ui::PresetBar presetBar;
+    juce::ToggleButton muteButton { "MUTE" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAttachment;
     tengri::ui::DotSpectrum spectrum;
     Knobs voiceKnobs, stringKnobs, synthKnobs, spiritKnobs;
     tengri::ui::DotSlider mixSlider, outSlider;

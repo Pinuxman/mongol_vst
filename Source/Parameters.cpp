@@ -55,10 +55,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { pid::root, 1 }, "Root", noteNames(), 2)); // D
     addPercent (layout, pid::drone, "Drone", 0.0f);
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { pid::mute, 1 }, "Mute", false));
 
     // ---- voice
     addPercent (layout, pid::kargyraa, "Kargyraa", 0.5f);
     addPercent (layout, pid::overtone, "Overtone", 0.6f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { pid::whistle, 1 }, "Whistle", juce::NormalisableRange<float> (0.0f, 2.0f), 1.0f,
+        Attr().withStringFromValueFunction (percent)));
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { pid::harmonic, 1 }, "Harmonic", juce::NormalisableRange<float> (4.0f, 16.0f, 1.0f), 8.0f,
         Attr().withStringFromValueFunction ([] (float v, int) { return "H" + juce::String (juce::roundToInt (v)); })));

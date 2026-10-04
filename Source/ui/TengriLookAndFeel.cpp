@@ -17,6 +17,10 @@ TengriLookAndFeel::TengriLookAndFeel()
     setColour (juce::TooltipWindow::backgroundColourId, palette::cardRaised);
     setColour (juce::TooltipWindow::textColourId, palette::cream);
     setColour (juce::TooltipWindow::outlineColourId, palette::stroke);
+    setColour (juce::PopupMenu::backgroundColourId, palette::cardRaised);
+    setColour (juce::PopupMenu::textColourId, palette::cream);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, palette::brick);
+    setColour (juce::PopupMenu::highlightedTextColourId, palette::cream);
 }
 
 void TengriLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float pos,
@@ -81,17 +85,20 @@ void TengriLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton&
 {
     const auto r = b.getLocalBounds().toFloat().reduced (1.0f);
     const bool on = b.getToggleState();
-    g.setColour (on ? palette::cream : (highlighted ? palette::cardRaised : palette::card));
+    const bool danger = (bool) b.getProperties().getWithDefault ("danger", false); // e.g. MUTE: lit = brick red
+    const auto onFill = danger ? palette::brick : palette::cream;
+    g.setColour (on ? onFill : (highlighted ? palette::cardRaised : palette::card));
     g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
-    g.setColour (on ? palette::cream : palette::stroke);
+    g.setColour (on ? onFill : palette::stroke);
     g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.0f);
 
     const float d = 6.0f;
-    g.setColour (on ? palette::brick : palette::dotOff);
+    g.setColour (on ? (danger ? palette::cream : palette::brick) : palette::dotOff);
     g.fillEllipse (r.getX() + 10.0f, r.getCentreY() - d * 0.5f, d, d);
 
-    DotMatrix::draw (g, b.getButtonText(), r.getX() + 22.0f, r.getCentreY() - DotMatrix::height (1.6f) * 0.5f, 1.6f,
-                     on ? palette::background : palette::dim, juce::Colours::transparentBlack, 0.9f);
+    const float pitch = r.getHeight() > 30.0f ? 2.0f : 1.6f;
+    DotMatrix::draw (g, b.getButtonText(), r.getX() + 22.0f, r.getCentreY() - DotMatrix::height (pitch) * 0.5f, pitch,
+                     on ? (danger ? palette::cream : palette::background) : palette::dim, juce::Colours::transparentBlack, 0.9f);
 }
 
 } // namespace tengri::ui

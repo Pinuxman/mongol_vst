@@ -10,10 +10,12 @@ inline constexpr auto mix    = "mix";
 inline constexpr auto output = "output";
 inline constexpr auto root   = "root";
 inline constexpr auto drone  = "drone";
+inline constexpr auto mute   = "mute";
 
 // VOICE -> khöömei
 inline constexpr auto kargyraa = "kargyraa";
 inline constexpr auto overtone = "overtone";
+inline constexpr auto whistle  = "whistle";
 inline constexpr auto harmonic = "harmonic";
 inline constexpr auto sweep    = "sweep";
 inline constexpr auto vowel    = "vowel";

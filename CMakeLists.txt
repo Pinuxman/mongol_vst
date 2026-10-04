@@ -26,6 +26,7 @@ endif()
 
 set(TENGRI_SOURCES
     Source/Parameters.cpp
+    Source/Presets.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/ui/TengriLookAndFeel.cpp)
